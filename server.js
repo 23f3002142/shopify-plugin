@@ -1,7 +1,5 @@
 import express from "express";
-import reactRouterNode from "@react-router/node";
-
-const { createRequestHandler } = reactRouterNode;
+import { createRequestHandler } from "@react-router/node";
 
 const app = express();
 
