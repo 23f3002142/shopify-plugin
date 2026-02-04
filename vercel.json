@@ -1,11 +1,22 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run setup && npm run build",
   "installCommand": "npm install",
+  "framework": null,
+  "outputDirectory": "build",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/api/index"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "PRISMA_CLIENT_ENGINE_TYPE": "binary"
+  }
 }

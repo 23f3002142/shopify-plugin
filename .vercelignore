@@ -1,0 +1,14 @@
+node_modules
+.git
+.cursor
+.gemini
+.shopify
+.react-router
+.vercel
+*.log
+.env
+.env.*
+!.env.example
+prisma/dev.db
+prisma/dev.db-journal
+.DS_Store

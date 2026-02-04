@@ -1,7 +1,6 @@
-import { createRequestHandler } from "@remix-run/node";
-import * as build from "../build/server/index.js";
+import { createRequestHandler } from "@react-router/node";
 
 export default createRequestHandler({
-  build,
-  mode: process.env.NODE_ENV,
+  build: () => import("../build/server/index.js"),
+  mode: process.env.NODE_ENV || "production",
 });
