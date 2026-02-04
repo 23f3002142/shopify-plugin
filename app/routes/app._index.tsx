@@ -8,7 +8,7 @@ import { useFetcher, useLoaderData, useNavigate, useSearchParams } from "react-r
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { memoryStore } from "../memory.server";
+import { databaseStore } from "../database.server";
 
 // const OUTBLOG_API_URL = "http://localhost:8000"; // use this locally if needed
 const OUTBLOG_API_URL = "https://api.outblogai.com";
@@ -48,13 +48,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const pageSize = 10;
   const skip = (page - 1) * pageSize;
 
-  let shopSettings = await memoryStore.getShopSettings(shop);
+  let shopSettings = await databaseStore.getShopSettings(shop);
 
   if (!shopSettings) {
-    shopSettings = await memoryStore.createShopSettings(shop);
+    shopSettings = await databaseStore.createShopSettings(shop);
   }
 
-  const { posts: blogs, total: totalBlogs } = await memoryStore.getBlogPosts(shop, skip, pageSize);
+  const { posts: blogs, total: totalBlogs } = await databaseStore.getBlogPosts(shop, skip, pageSize);
 
   return {
     shop,
@@ -102,7 +102,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }
 
       // Save API key
-      await memoryStore.upsertShopSettings(shop, { apiKey, postAsDraft });
+      await databaseStore.upsertShopSettings(shop, { apiKey, postAsDraft });
 
       return { success: true, message: "API key saved successfully" };
     } catch (error) {
@@ -111,7 +111,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   if (actionType === "fetchBlogs") {
-    const shopSettings = await memoryStore.getShopSettings(shop);
+    const shopSettings = await databaseStore.getShopSettings(shop);
 
     if (!shopSettings?.apiKey) {
       return { success: false, error: "API key not configured" };
@@ -146,7 +146,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       for (const post of posts) {
         const slug = post.slug || post.title?.toLowerCase().replace(/\s+/g, "-") || "untitled";
         
-        await memoryStore.upsertBlogPost(shop, {
+        await databaseStore.upsertBlogPost(shop, {
           externalId: post.id,
           slug,
           title: post.title || "Untitled",
@@ -159,7 +159,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }
 
       // Update last sync time
-      await memoryStore.upsertShopSettings(shop, { lastSyncAt: new Date() });
+      await databaseStore.upsertShopSettings(shop, { lastSyncAt: new Date() });
 
       return { success: true, message: `Fetched ${posts.length} blogs` };
     } catch (error) {
@@ -201,7 +201,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (actionType === "checkLiveStatus") {
     // Verify that Shopify articles referenced by our blogs still exist and are published
-    const shopSettings = await memoryStore.getShopSettings(shop);
+    const shopSettings = await databaseStore.getShopSettings(shop);
 
     if (!shopSettings) {
       return { success: false, error: "Shop settings not found" };
@@ -238,7 +238,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           }
         );
 
-        const statusData = await statusResponse.json();
+        const statusData = await statusResponse.json() as any;
 
         if (statusData.errors && statusData.errors.length > 0) {
           console.error("GraphQL errors while checking status:", statusData.errors);
@@ -264,7 +264,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }
 
       if (missingIds.length > 0) {
-        await memoryStore.updateManyBlogPosts(shop, missingIds, {
+        await databaseStore.updateManyBlogPosts(shop, missingIds, {
           shopifyArticleId: undefined,
           status: "draft",
         });
@@ -284,13 +284,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (actionType === "publishToShopify") {
     const blogId = formData.get("blogId") as string;
     
-    const shopSettings = await memoryStore.getShopSettings(shop);
+    const shopSettings = await databaseStore.getShopSettings(shop);
 
     if (!shopSettings) {
       return { success: false, error: "Shop settings not found" };
     }
 
-    const blogPost = await memoryStore.findBlogPost(shop, blogId);
+    const blogPost = await databaseStore.findBlogPost(shop, blogId);
 
     if (!blogPost) {
       return { success: false, error: "Blog post not found" };
@@ -478,7 +478,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         }
       );      
       console.log("print 2")
-      const createArticleData = await createArticleResponse.json();
+      const createArticleData = await createArticleResponse.json() as any;
       console.log("Create article response:", JSON.stringify(createArticleData, null, 2));
       
       // Handle Shopify API errors
@@ -512,7 +512,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const articleId = createArticleData.data?.articleCreate?.article?.id;
 
       // Update the blog post with Shopify article ID
-      await memoryStore.updateBlogPost(shop, blogId, {
+      await databaseStore.updateBlogPost(shop, blogId, {
         shopifyArticleId: articleId,
         status: shopSettings.postAsDraft ? "draft" : "published",
       });
@@ -564,7 +564,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   if (actionType === "publishAllToShopify") {
-    const shopSettings = await memoryStore.getShopSettings(shop);
+    const shopSettings = await databaseStore.getShopSettings(shop);
 
     if (!shopSettings) {
       return { success: false, error: "Shop settings not found" };
@@ -658,7 +658,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         const createArticleData = await createArticleResponse.json();
         if (!createArticleData.data?.articleCreate?.userErrors?.length) {
           const articleId = createArticleData.data?.articleCreate?.article?.id;
-          await memoryStore.updateBlogPost(shop, blogPost.id, {
+          await databaseStore.updateBlogPost(shop, blogPost.id, {
             shopifyArticleId: articleId,
             status: shopSettings.postAsDraft ? "draft" : "published",
           });
